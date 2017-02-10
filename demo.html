@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>wc-router demo</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="../webcomponentsjs/webcomponents-lite.min.js"></script>
+    <script>
+      window.Polymer = { dom: 'shadow', lazyRegister: true };
+    </script>
+    <link rel="import" href="../polymer/polymer.html">
+    <link rel="import" href="./wc-router.html">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+  </head>
+  <body>
+    <style>
+      body {
+        font: normal 14px 'Open Sans', sans-serif;
+        background-color: #efefef;
+      }
+      div.wrapper {
+        display: table;
+        margin: 0 auto;
+        margin-top: 60px;
+      }
+      div.buttons {
+        display: flex;
+      }
+      a.btn{
+        color: #fff;
+        border-radius: 4px;
+        text-transform: uppercase;
+        background-color: #2196F3;
+        font-weight: 800;
+        text-align: center;
+        padding: 15px 30px;
+        margin: 10px;
+        text-decoration: none;
+        display: block;
+        float: left;
+      }
+      wc-router {
+        display: flex;
+        min-height: 200px;
+        padding: 10px;
+        margin: 10px;
+        border: 1px solid #d8d8d8;
+        border-radius: 4px;
+        background-color: #ffffff;
+      }
+      .hash {
+        margin: 10px;
+      }
+      .hash > input {
+        border: none;
+        color: inherit;
+        background-color: #e4e4e4;
+        font-size: 20px;
+        border-radius: 4px;
+        width: 100%;
+        padding: 0.5em;
+        box-sizing: border-box;
+      }
+    </style>
+      <template id="demo" is="dom-bind">
+        <div class="wrapper">
+
+          <div class="hash">
+            <input id="input" value="[[hash]]"/>
+          </div>
+
+          <div class="buttons">
+            <a href="#" class="btn">Home</a>
+            <a href="#about-us" class="btn">About</a>
+            <a href="#blog/web/wc-router-is-the-greatest!" class="btn">Blog Post</a>
+            <a href="#broken/alpha/bravo" class="btn">Broken</a>
+          </div>
+        
+          <wc-router params="{{params}}" use-hash>
+            <div route="">Home page</div>
+            <div route="about-:something">About [[params.something]]. Now try replacing the "[[params.something]]" with something else.</div>
+            <div route="blog/:category/:title">Blog post "<b>[[params.title]]</b>" - [[params.category]]</div>
+            <div route=":missing**">Page "[[params.missing]]" not found. Route tail = "[[params.0]]"</div>
+          </wc-router>
+
+          <!-- <wc-router route-path="[[params.0]]" params="{{data}}">
+            <div route=":tool/:action">First: "[[data.tool]]" Second: "[[data.action]]"</div>
+          </wc-router> -->
+
+          <script>
+            (function() {
+              var demo = document.querySelector('#demo');
+              var input = document.querySelector('#input');
+              input.addEventListener('keyup', function() {
+                window.location.hash = input.value;
+              });
+              demo.hash = window.location.hash || '#';
+              window.addEventListener("hashchange", function() {
+                demo.hash = window.location.hash || '#';
+              }, false);
+            }());
+          </script>
+
+        </div>
+      </template>
+  </body>
+</html>

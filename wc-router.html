@@ -1,0 +1,379 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../wc-library/wc-library.html">
+<script src="pathToRegexp.js"></script>
+
+<dom-module id="wc-router">
+
+  <template>
+
+    <style>
+      :host {
+        display: inherit;
+      }
+      :host > ::content > :not(.selected) {
+        display: none !important;
+      }
+    </style>
+
+    <content id="content"></content>
+
+  </template>
+
+  <script>
+
+/*
+The `<wc-router>` element provides super fast and flexible routing inspired by [Express](https://expressjs.com/).
+
+This tiny router is jam packed with features!
+
+- It can extract named and unnamed route paramaters
+- It can display the selected content
+- It can import custom elements on selection
+- It can accept a route object or route-path string
+- It can respond to URL hash changes
+
+For additional docs on routing please see the [Express guide](https://expressjs.com/en/guide/routing.html) and [path-to-regexp](https://github.com/pillarjs/path-to-regexp/blob/master/Readme.md).
+
+## Examples
+
+#### Basic Routing
+
+```html
+<wc-router route="{{routeObject}}">
+  <div route="">Home</div>
+  <div route="/about">About</div>
+</wc-router>
+```
+
+#### Using the URL hash
+
+```html
+<wc-router use-hash>
+  <div route="">Home</div>
+  <div route="/about">About</div>
+</wc-router>
+```
+
+#### Provide a path as a route
+
+```html
+<wc-router route-path="[[pathString]]">
+  <div route="">Home</div>
+  <div route="/about">About</div>
+</wc-router>
+```
+
+#### Named paramaters
+
+```html
+<wc-router params="{{params}}" use-hash>
+  <div route="blog/:author/:id">Blod post #[[params.id]] by [[params.author]].</div>
+</wc-router>
+```
+
+#### Unnamed paramaters
+
+```html
+<wc-router params="{{params}}" use-hash>
+  <div route="blog/(.*)">Blog post #[[params.0]]</div>
+</wc-router>
+```
+
+#### Using regular expressions
+
+```html
+<wc-router use-hash>
+  <div route="(wo)?man">Will match on both 'woman' and 'man'.</div>
+  <div route="*fly">Will match paths ending in 'fly', such as butterfly and dragonfly.</div>
+</wc-router>
+```
+
+#### Get optional trailing path
+
+```html
+<wc-router params="{{params}}" use-hash>
+  <div route=":tool**">Selected tool [[params.tool]] with the trailing path [[params.0]]</div>
+</wc-router>
+```
+This is useful when you want to use the trailing path as the `route-path` for another `wc-router` element.
+
+#### Case and slash sensitive
+
+```html
+<wc-router use-hash case-sensitive strict>
+  <div route="/About">Will only match on '/About-us' and not '/about-us' or 'About-us'.</div>
+</wc-router>
+```
+
+#### Importing elements
+
+```html
+<wc-router use-hash import-selected>
+  <my-element href="./my-element.html"></my-element>
+</wc-router>
+```
+
+@demo demo.html
+*/
+    Polymer({
+
+      is: 'wc-router',
+
+      properties: {
+
+        /**
+          * The route object managed by this element.
+          */
+        route: {
+          type: Object,
+          notify: true,
+          value: function() {
+            return {
+              path: null,
+              query: null,
+              hash: null
+            };
+          }
+        },
+
+        /**
+          * Alternative route path consumed by this element to generate the `route`.
+          */
+        routePath: {
+          type: String,
+          notify: true
+        },
+
+        /**
+          * The conent node attribute containing the route.
+          */
+        attrForRoute: {
+          type: String,
+          value: 'route'
+        },
+
+        /**
+          * When set to true this element will watch to URL hash to generate the `route`.
+          */
+        useHash: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+          * The  named URL segments extracted from the `route`.
+          *
+          * Named segments like ':post' are mapped to the key 'post', while unnamed segments such as '*' will map to the next sequantial integer.
+          *
+          * For example: '/:name/*' will map to 'params.name' and 'params.0'
+          */
+        params: {
+          type: Object,
+          notify: true,
+          value: function() {
+            return {};
+          }
+        },
+
+        /**
+         * The array of elements that are used as potential route paths.
+         */
+        routeElements: {
+          type: Array,
+          notify: true,
+          readOnly: true
+        },
+
+        /**
+         * The current seleted route-element.
+         */
+        selected: {
+          type: Object,
+          notify: true
+        },
+
+        /**
+          * When set to true this element will import the selected route-element with the Polymer importHref method using its href attribute.
+          *
+          * For example: `<hello-world href="./src/world.html">` will try to import from './src/world.html'.
+          */
+        importSelected: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * When set to true the selected element will be imported asynchronously.
+         */
+        async: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * When set to true the selected element's `unresolved` attribute will be removed on import.
+         */
+        resolve: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * When set to true this element's events will bubble up.
+         */
+        bubbles: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * When set to true this element will match leading and trailing slashes.
+         */
+        strict: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * When set to true this element will match with case sensitivity.
+         */
+        caseSensitive: {
+          type: Boolean,
+          value: false
+        },
+
+        /**
+         * True when the selected element is busy loading.
+         */
+        loading: {
+          type: Boolean,
+          value: false,
+          notify: true,
+          readOnly: true,
+          reflectToAttribute: true
+        }
+
+      },
+
+      observers: [
+        '_pathToRoute(routePath)',
+        '_route(route.path, routeElements)',
+        '_routeWithHash(useHash)'
+      ],
+
+      ready: function() {
+        this._watchContent();
+      },
+
+      /**
+       * Shows a given element in the router as the `selected` item.
+       */
+      selectRouteElement: function(element, params) {
+        this.params = params || {};
+        if (this.selected == element) return;
+        element = element || null;
+        params = params || null;
+        this.routeElements.forEach(function(node) {
+          if (node == element) {
+            node.addClass('selected');
+          } else {
+            node.removeClass('selected');
+          }
+        });
+        this.selected = element;
+        this._importElement(element);
+      },
+
+      _importElement: function(element) {
+        if (!element) return;
+        if (this.importSelected) {
+          var href = element.attr('href');
+          if (!href) return;
+          this._setLoading(true);
+          element.addClass('loading');
+          var path = this.resolveUrl(href);
+          this.importHref(path, this._onImported.bind(this, element), null, this.async);
+        } else {
+          this._setLoading(false);
+        }
+      },
+
+      _onImported: function(element) {
+        if (element == this.selected) {
+          this._setLoading(false);
+        }
+      },
+
+      _pathToRoute: function(routePath) {
+        this.route.path = routePath;
+        this.notifyPath('route.path');
+      },
+
+      _routeWithHash: function(useHash) {
+        if (useHash) {
+          this._watchHash();
+          this._hashChanged();
+        }
+      },
+
+      _watchHash: function() {
+        window.addEventListener("hashchange", this._hashChanged.bind(this), false);
+      },
+
+      _hashChanged: function() {
+        this.routePath = window.location.hash.substr(1);
+      },
+
+      _addRoutes: function() {
+        var routes = Array.prototype.slice.call(this.children);
+        this._setRouteElements(routes);
+      },
+
+      _watchContent: function() {
+        this._addRoutes();
+        Polymer.dom(this.$.content).observeNodes(function(e) {
+          this._addRoutes();
+        }.bind(this));
+      },
+
+      _route: function(path, content) {
+        path = path || '';
+        var element,
+            selected = null,
+            routeAttr,
+            params,
+            index = 0,
+            length = content.length;
+        if (!this.strict && path.startsWith('/')) {
+          path = path.substr(1);
+        }
+        for (index; index < length; index++) {
+          element = content[index];
+          routeAttr = element.attr(this.attrForRoute) || '';
+          params = this._matchRoute(routeAttr, path);
+          if (!!params) {
+            selected = element;
+            break;
+          }
+        }
+        this.selectRouteElement(selected, params);
+      },
+
+      _matchRoute: function(route, path) {
+        var keys = [];
+        var regex = pathToRegexp(route, keys, { sensitive: this.caseSensitive, strict : this.strict });
+        var result = regex.exec(path);
+        if (!result) return false;
+        var params = {};
+        var length = result.length;
+        if (length > 1) {
+          for (var i = 1; i < length; i++) {
+            params[keys[i-1].name] = result[i];
+          }
+        }
+        return params;
+      }
+
+    });
+  </script>
+</dom-module>

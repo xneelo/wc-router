@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>wc-router tests</title>
+    <meta charset="utf-8">
+    <script src="../../webcomponentsjs/webcomponents-lite.min.js"></script>
+    <script src="../../web-component-tester/browser.js"></script>
+    <link rel="import" href="../../wc-library/wc-library.html"></script>
+    <link rel="import" href="../wc-router.html">
+  </head>
+  <body>
+
+    <test-fixture id="basic">
+      <template>
+        <wc-router>
+          <span route="alpha"></span>
+        </wc-router>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="elements">
+      <template>
+        <wc-router>
+          <span route="alpha"></span>
+        </wc-router>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="routing">
+      <template>
+        <wc-router>
+          <span route="noname/(.*)"></span>
+          <span route=":alpha/:beta"></span>
+          <span route="*meg*"></span>
+          <span route="cAsE"></span>
+          <span route="/slash"></span>
+          <span custom="route"></span>
+          <span route=":some**"></span>
+        </wc-router>
+      </template>
+    </test-fixture>
+
+    <test-fixture id="import">
+      <template>
+        <wc-router>
+          <test-helper route="alpha" href="test/test-helper.html"></test-helper>
+          <test-helper route="omega" href="test/test-helper.html"></test-helper>
+        </wc-router>
+      </template>
+    </test-fixture>
+
+    <script>
+
+      'use strict';
+
+      suite('Basic', function() {
+
+        var element;
+        setup(function() {
+          element = fixture('basic');
+        });
+
+        test('it has a default route object', function() {
+          expect(element.route).to.be.ok
+          expect(element.route.path).to.equal(null);
+          expect(element.route.query).to.equal(null);
+          expect(element.route.hash).to.equal(null);
+        });
+
+        test('it parses a route path', function() {
+          var path = 'abc';
+          element.routePath = path;
+          expect(element.route.path).to.equal(path);
+        });
+
+        test('it can use window hash as a route', function(done) {
+          var hash = 'theta';
+          element.useHash = true;
+          element.addEventListener('route-path-changed', function() {
+            expect(element.routePath).to.equal(hash);
+            done();
+          });
+          window.location.hash = hash;
+        });
+
+      });
+
+      suite('Elements', function() {
+
+        var element;
+        setup(function() {
+          element = fixture('elements');
+        });
+
+        test('it is aware of its content elements', function(done) {
+          element.addEventListener('route-elements-changed', function(event) {
+            expect(event.detail.value[0]).to.equal(element.querySelector('[route="alpha"]'));
+            done();
+          });
+        });
+
+        test('it can watch its content elements', function(done) {
+          var omega = document.createElement('span');
+          omega.setAttribute('route', 'omega');
+          element.appendChild(omega);
+          element.addEventListener('route-elements-changed', function(event) {
+            var value = event.detail.value;
+            expect(value[value.length - 1]).to.equal(omega);
+            done();
+          });
+        });
+
+        test('it can select the route element', function(done) {
+          element.addEventListener('selected-changed', function(event) {
+            var value = event.detail.value;
+            var alpha = element.querySelector('[route="alpha"]');
+            expect(value).to.equal(alpha);
+            expect(alpha.hasClass('selected')).to.equal(true);
+            done();
+          });
+          element.routePath = 'alpha';
+        });
+
+      });
+
+
+      suite('Routing', function() {
+
+        var element;
+        setup(function() {
+          element = fixture('routing');
+        });
+
+        test('it can extract unnamed route params', function() {
+          var route = 'noname/home';
+          element.routePath = route;
+          expect(element.params[0]).to.be.ok;
+          expect(element.params[0]).to.equal(route.split('/')[1]);
+        });
+
+        test('it can extract named route params', function() {
+          var route = 'one/two';
+          element.routePath = route;
+          expect(element.params.alpha).to.be.ok;
+          expect(element.params.alpha).to.equal(route.split('/')[0]);
+          expect(element.params.beta).to.be.ok;
+          expect(element.params.beta).to.equal(route.split('/')[1]);
+        });
+
+        test('it can extract the route tail', function() {
+          var tail = '/tail/path'
+          var route = 'anything' + tail;
+          element.routePath = route;
+          expect(element.params[0]).to.be.ok;
+          expect(element.params[0]).to.equal(tail);
+        });
+
+        test('it can route using regex', function() {
+          var route = 'omega';
+          element.routePath = route;
+          var selected = element.selected;
+          var route = element.querySelector('[route="*meg*"]');
+          expect(selected).to.equal(route);
+        });
+
+        test('it can route using a custom route attr', function() {
+          var route = 'route';
+          element.attrForRoute = 'custom';
+          element.routePath = route;
+          var selected = element.selected;
+          var route = element.querySelector('[custom="route"]');
+          expect(selected).to.equal(route);
+        });
+
+        test('it use case sensitive routing', function() {
+          var route = 'cAsE';
+          element.caseSensitive = true;
+          element.routePath = route;
+          var selected = element.selected;
+          var route = element.querySelector('[route="cAsE"]');
+          expect(selected).to.equal(route);
+        });
+
+        test('it use strict routing', function() {
+          var route = '/slash';
+          element.strict = true;
+          element.routePath = route;
+          var selected = element.selected;
+          var route = element.querySelector('[route="/slash"]');
+          expect(selected).to.equal(route);
+        });
+
+      });
+
+      suite('Importing', function() {
+
+        var element;
+        setup(function() {
+          element = fixture('import');
+          element.importSelected = true;
+        });
+
+        test('it can import elements on route selection', function(done) {
+          var route = element.querySelector('[route="alpha"]');
+          route.addEventListener('test-helper-ready', function(event) {
+            expect(event).to.be.ok;
+            done();
+          });
+          element.routePath = 'alpha';
+        });
+
+        test('it sets the `loading` property on importing', function(done) {
+          var count = 0;
+          element.addEventListener('loading-changed', function(event) {
+            var loading = event.detail.value;
+            if (count == 0) {
+              expect(element.hasAttribute('loading')).to.equal(true);
+            } else if (count == 1) {
+              expect(element.hasAttribute('loading')).to.equal(false);
+              done();
+            };
+            count = count + 1;
+          });
+          element.routePath = 'omega';
+        });
+
+      });
+
+    </script>
+  </body>
+</html>

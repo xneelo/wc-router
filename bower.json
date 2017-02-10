@@ -1,0 +1,27 @@
+{
+  "name": "wc-router",
+  "version": "1.0.0",
+  "description": "Fast and flexible express style routing.",
+  "main": "wc-router.html",
+  "authors": [
+    "UX <ux@hetzner.co.za>"
+  ],
+  "license": "MIT",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "Polymer/polymer#^1.7.1",
+    "wc-library": "hetznerZA/wc-library#v1.0.0",
+    "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.2.5"
+  },
+  "devDependencies": {
+    "iron-component-page": "PolymerElements/iron-component-page#^1.1.7",
+    "web-component-tester": "Polymer/web-component-tester#^4.3.1"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "wc-router",
+  "version": "1.0.0",
+  "description": "Fast and flexible express style routing.",
+  "main": "wc-router.html",
+  "config": {
+    "port": "9099"
+  },
+  "scripts": {
+    "test": "wct",
+    "start": "cross-conf-env wc-server -n -c -o -p npm_package_config_port",
+    "build": "browserify -r path-to-regexp -s pathToRegexp > pathToRegexp.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "browserify": "^13.1.1",
+    "cross-conf-env": "^1.0.5",
+    "path-to-regexp": "^1.7.0",
+    "wc-server": "hetznerza/wc-server#v1.0.0",
+    "web-component-tester": "^5.0.0"
+  }
+}
